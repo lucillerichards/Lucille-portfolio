@@ -25,7 +25,7 @@ function setupVideoPlayers() {
     watchLink.href = `https://www.youtube.com/watch?v=${id}`;
     watchLink.target = '_blank';
     watchLink.rel = 'noopener noreferrer';
-    watchLink.textContent = 'WATCH ON YOUTUBE ↗';
+    watchLink.textContent = 'WATCH ON YOUTUBE';
     watchLink.setAttribute('aria-label', 'Watch on YouTube (opens in a new tab)');
     box.appendChild(watchLink);
 
