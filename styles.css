@@ -1066,3 +1066,69 @@ body.photo-lightbox-open { overflow: hidden; }
 .artwork-static { display: block; position: relative; }
 .artwork-static .art-caption { padding-right: 0; }
 .artwork-static .art-image { transition: none; will-change: auto; }
+
+/* Mobile polish: clean navigation, balanced galleries and native-looking controls. */
+.creative-play { padding-left: 0; }
+.creative-play::before {
+  content: "";
+  display: block;
+  width: 0;
+  height: 0;
+  border-top: 10px solid transparent;
+  border-bottom: 10px solid transparent;
+  border-left: 16px solid currentColor;
+  transform: translateX(2px);
+}
+@media (hover: none) {
+  .desktop-nav a:hover { color: inherit; }
+  .desktop-nav a:focus-visible { color: var(--coral); }
+  .creative-video .video-placeholder:hover .creative-video-poster { filter: brightness(.83); transform: none; }
+}
+@media (max-width: 650px) {
+  .page-header {
+    align-items: center;
+    padding: 18px 18px 14px;
+    gap: 16px;
+    min-height: 76px;
+  }
+  .page-header .brand { min-height: 44px; flex: 0 0 auto; }
+  .page-header .brand-image { width: min(29vw, 132px); max-width: 132px; }
+  .page-header .desktop-nav {
+    display: flex;
+    gap: 9px 15px;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+    align-items: center;
+    padding-top: 0;
+  }
+  .page-header .desktop-nav a {
+    font-size: clamp(8px, 2.25vw, 10px);
+    line-height: 1.6;
+    letter-spacing: .015em;
+    white-space: nowrap;
+  }
+  .section-inner { min-width: 0; }
+  .design-page-intro { padding-top: 26px; padding-bottom: 45px; }
+  .design-albums, .tee-stack { gap: 24px 16px; }
+  .art-caption { font-size: 9px; line-height: 1.5; overflow-wrap: anywhere; }
+  .photography-section, .new-video-section { padding-top: 58px; padding-bottom: 76px; }
+  .creative-video-grid { gap: 36px; margin-top: 30px; }
+  .creative-video:last-child { width: 100%; }
+  .creative-video .video-box { aspect-ratio: 16 / 9; }
+  .creative-play { width: 54px; height: 54px; background: rgba(0,0,0,.72); }
+  .creative-play::before { border-top-width: 8px; border-bottom-width: 8px; border-left-width: 13px; }
+  .video-watch-link { right: 7px; top: 7px; font-size: 8px; padding: 7px 8px; }
+  .headshot-gallery { scroll-padding-inline: 2px; }
+  .headshot-gallery .headshot-photo { flex-basis: min(60%, 230px); }
+  .photo-lightbox { padding: 60px 32px; }
+  .photo-lightbox-image { max-height: calc(100dvh - 130px); }
+  .photo-lightbox-arrow { font-size: 36px; }
+  .page-footer { padding-inline: 18px; padding-bottom: 22px; }
+}
+@media (max-width: 390px) {
+  .page-header { align-items: flex-start; gap: 10px; }
+  .page-header .brand-image { width: 104px; }
+  .page-header .desktop-nav { column-gap: 11px; row-gap: 5px; }
+  .page-header .desktop-nav a { font-size: 8px; }
+  .design-page-intro .section-heading { font-size: clamp(27px, 8vw, 36px); }
+}
