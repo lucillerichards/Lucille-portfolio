@@ -1132,3 +1132,60 @@ body.photo-lightbox-open { overflow: hidden; }
   .page-header .desktop-nav a { font-size: 8px; }
   .design-page-intro .section-heading { font-size: clamp(27px, 8vw, 36px); }
 }
+
+/* Mobile gallery affordances and balanced three-piece design sets. */
+.gallery-swipe-hint { display: none; }
+@media (max-width: 700px) {
+  .gallery-swipe-hint {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 10px;
+    max-width: 1080px;
+    margin: 22px auto -22px;
+    font: 500 9px/1.5 var(--unbounded);
+    letter-spacing: .045em;
+    color: inherit;
+    opacity: .8;
+  }
+  .gallery-swipe-hint span { font-size: 19px; line-height: 1; color: var(--coral); }
+  .headshot-gallery {
+    display: flex;
+    overflow-x: auto;
+    scroll-snap-type: x mandatory;
+    overscroll-behavior-inline: contain;
+    -webkit-overflow-scrolling: touch;
+    scroll-padding-inline: 0;
+    gap: 12px;
+    padding: 0 0 12px;
+    scrollbar-width: thin;
+  }
+  .headshot-gallery .headshot-photo,
+  .headshot-gallery .headshot-photo:nth-child(5) {
+    flex: 0 0 74%;
+    max-width: 285px;
+    width: auto;
+    scroll-snap-align: start;
+  }
+}
+@media (max-width: 650px) {
+  .design-albums, .tee-stack {
+    display: grid;
+    grid-template-columns: minmax(0,1fr);
+    width: min(100%, 390px);
+    max-width: 390px;
+    gap: 34px;
+    margin: 38px auto 0;
+  }
+  .design-albums .artwork:last-child,
+  .tee-stack .tee-image:last-child {
+    grid-column: auto;
+    max-width: none;
+    width: 100%;
+    justify-self: stretch;
+    margin-inline: 0;
+  }
+  .design-albums .art-caption { padding-top: 12px; font-size: 10px; }
+  .tee-stack .tee-image { aspect-ratio: 7 / 8; }
+  .design-tour { padding-top: 70px; padding-bottom: 80px; }
+}
