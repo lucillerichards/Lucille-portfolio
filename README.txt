@@ -1,0 +1,1 @@
+Single page portfolio. Open index.html for a basic preview. For embedded YouTube playback use a web server, for example: python3 -m http.server 8000 then visit http://localhost:8000 . The original V16 ZIP was not modified.
