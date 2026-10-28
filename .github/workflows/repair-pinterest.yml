@@ -1,49 +1,21 @@
-name: Tighten case study opening composition
+name: Inspect official Northern Lights Spotify embeds
 on:
   push:
     paths: ['.github/workflows/repair-pinterest.yml']
-permissions:
-  contents: write
 jobs:
-  edit:
+  inspect:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Adjust opening spacing and paragraph wrapping
-        run: |
+      - run: |
           python3 - <<'PY'
-          from pathlib import Path
-          p=Path('meet-me-in-the-sky.html')
-          html=p.read_text(encoding='utf-8')
-          assert 'class="case__intro"' in html
-          css="""
-          /* Refined opening composition: allow for transparent logo whitespace. */
-          .case__back { margin-bottom:18px!important; }
-          .case__intro { margin-top:-35px!important; max-width:1140px!important; }
-          .case__intro .case__logo {
-            display:block;
-            margin-bottom:-4px!important;
-          }
-          .case__intro .case__copy { width:100%; max-width:1140px; margin-inline:auto; }
-          .case__intro .case__copy p {
-            font-size:clamp(13px,1.17vw,14.7px);
-            text-align:center;
-            text-wrap:wrap!important;
-          }
-          @media(max-width:760px){
-            .case__back {margin-bottom:24px!important;}
-            .case__intro {margin-top:-22px!important;}
-            .case__intro .case__logo {margin-bottom:2px!important;}
-            .case__intro .case__copy p {font-size:13px;}
-          }
-          """
-          if 'Refined opening composition: allow for transparent logo whitespace.' not in html:
-              html=html.replace('</style>',css+'</style>',1)
-          p.write_text(html,encoding='utf-8')
+          import requests,re,html
+          for url in ['https://www.dunorthernlights.co.uk/music','https://dur.ac.uk/news-events/latest-news/2026/03/durhams-got-talent-/']:
+              try:
+                  r=requests.get(url,timeout=20)
+                  print('SOURCE',url,'STATUS',r.status_code,'LENGTH',len(r.content))
+                  links=set(re.findall(r'https?[^"\s<>]{0,200}spotify[^"\s<>]{0,180}',html.unescape(r.text),re.I))
+                  links|=set(re.findall(r'https?[^"\s<>]{0,200}open\.spotify\.com/[^"\s<>]{0,180}',html.unescape(r.text),re.I))
+                  for link in list(links)[:30]: print('SPOTIFY',link[:260])
+              except Exception as e: print(type(e).__name__,str(e)[:150])
           PY
-      - name: Commit
-        run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add meet-me-in-the-sky.html
-          git diff --cached --quiet || (git commit -m "Tighten opening logo spacing and improve paragraph wrap" && git push)
