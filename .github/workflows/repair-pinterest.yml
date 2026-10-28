@@ -1,40 +1,49 @@
-name: Standardise opening paragraph alignment
+name: Tighten case study opening composition
 on:
   push:
     paths: ['.github/workflows/repair-pinterest.yml']
 permissions:
   contents: write
 jobs:
-  fix:
+  edit:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Restore consistent intro text wrapping
+      - name: Adjust opening spacing and paragraph wrapping
         run: |
           python3 - <<'PY'
           from pathlib import Path
           p=Path('meet-me-in-the-sky.html')
-          h=p.read_text(encoding='utf-8')
+          html=p.read_text(encoding='utf-8')
+          assert 'class="case__intro"' in html
           css="""
-          /* Consistent opening copy: normal wrapping and paragraph alignment */
-          .case__intro .case__copy { text-align:center; }
-          .case__intro .case__copy p,
-          .case__intro .case__copy p:first-child {
-            text-align:inherit;
-            text-wrap:wrap;
-            white-space:normal;
-            max-width:none;
-            margin-left:0;
-            margin-right:0;
+          /* Refined opening composition: allow for transparent logo whitespace. */
+          .case__back { margin-bottom:18px!important; }
+          .case__intro { margin-top:-35px!important; max-width:1140px!important; }
+          .case__intro .case__logo {
+            display:block;
+            margin-bottom:-4px!important;
+          }
+          .case__intro .case__copy { width:100%; max-width:1140px; margin-inline:auto; }
+          .case__intro .case__copy p {
+            font-size:clamp(13px,1.17vw,14.7px);
+            text-align:center;
+            text-wrap:wrap!important;
+          }
+          @media(max-width:760px){
+            .case__back {margin-bottom:24px!important;}
+            .case__intro {margin-top:-22px!important;}
+            .case__intro .case__logo {margin-bottom:2px!important;}
+            .case__intro .case__copy p {font-size:13px;}
           }
           """
-          if 'Consistent opening copy: normal wrapping' not in h:
-              h=h.replace('</style>',css+'</style>',1)
-          p.write_text(h,encoding='utf-8')
+          if 'Refined opening composition: allow for transparent logo whitespace.' not in html:
+              html=html.replace('</style>',css+'</style>',1)
+          p.write_text(html,encoding='utf-8')
           PY
       - name: Commit
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add meet-me-in-the-sky.html
-          git diff --cached --quiet || (git commit -m "Restore consistent introductory paragraph wrapping" && git push)
+          git diff --cached --quiet || (git commit -m "Tighten opening logo spacing and improve paragraph wrap" && git push)
