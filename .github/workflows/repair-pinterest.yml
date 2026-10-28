@@ -11,14 +11,14 @@ jobs:
         run: |
           python3 - <<'PY'
           from pathlib import Path
-          from bs4 import BeautifulSoup
+          import re
           h=Path('meet-me-in-the-sky.html').read_text()
-          s=BeautifulSoup(h,'html.parser')
-          for i,img in enumerate(s.find_all('img')):
-              par=img.parent
-              print('IMAGE',i,'ALT',img.get('alt','')[:90],'CLASS',img.get('class'),'PARENT',par.name,par.get('class'), 'GRAND',par.parent.get('class') if par.parent else '')
-          for style in s.find_all('style'):
-              txt=style.get_text()
-              print('STYLE RELEVANT',txt[-11000:])
-          print('BODY children',[(x.name,x.get('class')) for x in s.body.find_all(recursive=False) if x.name])
+          for i,m in enumerate(re.finditer(r'<img\\b[^>]*>',h,re.I)):
+              tag=m.group()
+              print('IMAGE',i,'TAG',re.sub(r'(?i)src="data:[^"]+"','src="(embedded)"',tag)[:320])
+              print('CONTEXT',re.sub(r'(?i)data:image/[^"\\s]+','(embedded)',h[max(0,m.start()-210):m.start()])[-210:])
+          for m in re.finditer(r'<style[^>]*>(.*?)</style>',h,re.I|re.S):
+              txt=m.group(1)
+              print('STYLE TAIL',txt[-11000:])
+          print('case sections',re.findall(r'<section[^>]*class="[^"]*case[^"]*"[^>]*>',h)[:40])
           PY
