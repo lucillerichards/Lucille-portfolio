@@ -56,6 +56,19 @@ jobs:
                   html=html[:location]+'<section aria-label="Album artwork inspiration" style="padding:24px;max-width:1140px;margin:0 auto"><h2>ALBUM ART INSPIRATION</h2>'+widget+'</section>'+html[location:]
                   print('Created a board section before the end of the page')
               html=html.replace('</body>','<script async defer src="https://assets.pinterest.com/js/pinit.js"></script>\n</body>',1)
+          # Fix the actual original moodboard, which used a pin.it short URL.
+          # Remove the extra section added by the first repair.
+          html=re.sub(r'<section aria-label="Album artwork inspiration"[^>]*>.*?<div class="pinterest-live-board".*?</section>', '', html, count=1, flags=re.I|re.S)
+          original=re.compile(r'<div class="case__pin">.*?</div>',re.I|re.S)
+          replacement=('<div class="case__pin"><div class="pinterest-live-board" style="width:100%;max-width:860px;margin:0 auto;min-height:460px;">'
+                       '<a data-pin-do="embedBoard" data-pin-board-width="800" data-pin-scale-width="110" data-pin-scale-height="440" href="'+url+'"></a>'
+                       '</div><a href="'+url+'" target="_blank" rel="noopener noreferrer">VIEW MOODBOARD ON PINTEREST ↗</a></div>')
+          html,n=original.subn(lambda m:replacement,html,count=1)
+          if n!=1: raise RuntimeError('Original case__pin moodboard not found; refusing to alter the wrong section')
+          print('Replaced original case__pin block in the right position')
+          # Deduplicate the official loader.
+          loader='<script async defer src="https://assets.pinterest.com/js/pinit.js"></script>'
+          if html.count(loader)>1: html=html.replace(loader,'') .replace('</body>',loader+'</body>',1)
           path.write_text(html,encoding='utf-8')
           PY
       - name: Commit case study
