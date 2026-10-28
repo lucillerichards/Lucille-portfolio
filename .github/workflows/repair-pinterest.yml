@@ -20,5 +20,9 @@ jobs:
           for m in re.finditer(r'<style[^>]*>(.*?)</style>',h,re.I|re.S):
               txt=m.group(1)
               print('STYLE TAIL',txt[-11000:])
+          clean=re.sub(r'data:image/[^"\\s]+','(embedded image)',h)
+          for name in ['case__intro','case__process','case__last']:
+              pos=clean.find('<section class="'+name+'">')
+              print('SECTION',name,clean[pos:pos+2700])
           print('case sections',re.findall(r'<section[^>]*class="[^"]*case[^"]*"[^>]*>',h)[:40])
           PY
