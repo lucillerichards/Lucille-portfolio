@@ -116,3 +116,56 @@ function setupPhotoLightbox() {
   });
 }
 setupMobileMenu(); setupVideoPlayers(); setupAssetFallbacks(); setupReveal(); setupPhotoLightbox();
+
+/* Replace the case-study's old Pinterest embed with Pinterest's official
+   board widget. Keep the board in its existing position on the page. */
+function setupAlbumArtPinterest() {
+  if (!/meet-me-in-the-sky(?:\.html)?$/.test(window.location.pathname)) return;
+  const boardURL = 'https://www.pinterest.com/lucillejayne02/album-art-inspo/';
+  const candidates = [...document.querySelectorAll('iframe, a, blockquote, [data-pin-do]')];
+  let target = candidates.find(el =>
+    (el.getAttribute('src') || el.getAttribute('href') || el.getAttribute('data-pin-url') || '').toLowerCase().includes('pinterest.com/lucillejayne02/album-art-inspo')
+  );
+  if (!target) target = candidates.find(el =>
+    /pinterest/i.test(el.getAttribute('src') || '') &&
+    /album.art|inspo/i.test((el.closest('section, article, div')?.textContent || '').slice(0,300))
+  );
+  if (!target) target = document.querySelector('.pinterest-embed, .pinterest-widget, #pinterest-embed, #pinterest-board');
+  if (!target) return;
+
+  // An iframe may be wrapped in a dedicated frame or placeholder.
+  // Replace only the old embed, never the surrounding case-study content.
+  const wrapper = target.parentElement;
+  const useWrapper = target.tagName === 'IFRAME' && wrapper &&
+    wrapper.children.length === 1 && /pinterest|embed|iframe/i.test(wrapper.className || '');
+  const mount = document.createElement('div');
+  mount.className = 'album-art-pinterest-board';
+  mount.style.cssText = 'width:100%;max-width:860px;margin:0 auto;min-height:475px;overflow:hidden;';
+  const link = document.createElement('a');
+  link.href = boardURL;
+  link.setAttribute('data-pin-do', 'embedBoard');
+  link.setAttribute('data-pin-board-width', '800');
+  link.setAttribute('data-pin-scale-height', '440');
+  link.setAttribute('data-pin-scale-width', '110');
+  link.setAttribute('aria-label', 'Album Art Inspo — Pinterest inspiration board');
+  mount.appendChild(link);
+  (useWrapper ? wrapper : target).replaceWith(mount);
+
+  const fallback = document.createElement('a');
+  fallback.href = boardURL;
+  fallback.target = '_blank';
+  fallback.rel = 'noopener noreferrer';
+  fallback.textContent = 'VIEW THE BOARD ON PINTEREST ↗';
+  fallback.style.cssText = 'display:inline-block;margin-top:14px;font-size:12px;letter-spacing:.04em;text-decoration:underline;text-underline-offset:4px;';
+  mount.after(fallback);
+  if (window.PinUtils && typeof window.PinUtils.build === 'function') {
+    window.PinUtils.build();
+  } else if (!document.querySelector('script[src*="assets.pinterest.com/js/pinit.js"]')) {
+    const script = document.createElement('script');
+    script.src = 'https://assets.pinterest.com/js/pinit.js';
+    script.async = true;
+    script.defer = true;
+    document.head.appendChild(script);
+  }
+}
+setupAlbumArtPinterest();
