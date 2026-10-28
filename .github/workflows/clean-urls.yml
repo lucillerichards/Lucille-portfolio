@@ -1,0 +1,48 @@
+name: Publish clean project URLs
+on:
+  push:
+    paths:
+      - '*.html'
+      - '.github/workflows/clean-urls.yml'
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  publish-clean-paths:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: true
+      - name: Generate directory URLs for all root-level HTML pages
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          import re
+          for source in Path('.').glob('*.html'):
+              if source.name == 'index.html':
+                  continue
+              slug=source.stem
+              target=Path(slug)/'index.html'
+              target.parent.mkdir(parents=True,exist_ok=True)
+              page=source.read_text(encoding='utf-8')
+              # A base URL keeps CSS, images, JS and navigation functioning
+              # when the page is visited at /project/ instead of /project.html.
+              if not re.search(r'<base\b',page,re.I):
+                  page=re.sub(r'(<head\b[^>]*>)',r'\1<base href="/">',page,count=1,flags=re.I)
+              canonical='https://lucillerichards.com/'+slug+'/'
+              page=re.sub(r'<link\s+rel="canonical"[^>]*>','',page,flags=re.I)
+              page=re.sub(r'(<head\b[^>]*>)',lambda m:m.group(1)+'<link rel="canonical" href="'+canonical+'">',page,count=1,flags=re.I)
+              page=re.sub(r'(<meta\s+property="og:url"\s+content=")[^"]+(")',lambda m:m.group(1)+canonical+m.group(2),page,flags=re.I)
+              target.write_text(page,encoding='utf-8')
+              print('Published',target,'=>',canonical)
+          PY
+      - name: Save generated clean paths
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -- '*/index.html'
+          if ! git diff --cached --quiet; then
+            git commit -m "Publish clean paths for portfolio project pages"
+            git push
+          fi
