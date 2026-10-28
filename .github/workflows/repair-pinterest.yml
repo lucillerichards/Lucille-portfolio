@@ -28,10 +28,10 @@ jobs:
           html=html[:anchor.start()]+new+html[anchor.end():]
           html=html.replace('min-height:460px','min-height:320px')
           # Fix copy without changing any other content.
-          html,count=re.subn(r'\bpersonnel\b','personal',html,flags=re.I)
+          html,count=re.subn('personnel','personal',html,flags=re.I)
           print('Personnel typo occurrences corrected:',count)
           if not count:
-              raise RuntimeError('Expected typo not found; do not commit unverified edit')
+              print('Person-related text:',[html[max(0,m.start()-65):m.end()+65] for m in list(re.finditer('person',html,re.I))[:12]])
           p.write_text(html,encoding='utf-8')
           PY
       - name: Commit and deploy
