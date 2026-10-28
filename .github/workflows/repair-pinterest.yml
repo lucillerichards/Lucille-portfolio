@@ -1,47 +1,36 @@
-name: Case study copy and spacing polish
+name: Correct artwork credits
 on:
   push:
     paths: ['.github/workflows/repair-pinterest.yml']
 permissions:
   contents: write
 jobs:
-  edit:
+  credits:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Apply four scoped case-study edits
+      - name: Update final artwork credits
         run: |
           python3 - <<'PY'
           from pathlib import Path
-          import re
           p=Path('meet-me-in-the-sky.html')
           h=p.read_text(encoding='utf-8')
-          # 1. Balance lines of the introductory copy without touching image layout.
-          css='.case__intro .case__copy p { text-wrap: pretty; }\n@supports (text-wrap: balance) { .case__intro .case__copy p:first-child { text-wrap: balance; } }'
-          if css not in h:
-              assert '</style>' in h
-              h=h.replace('</style>',css+'</style>',1)
-          # 2. Remove only the external link beneath the Pinterest embed.
-          link=re.compile(r'<a\b(?=[^>]*href="https://www\.pinterest\.com/lucillejayne02/album-art-inspo/")(?=[^>]*target="_blank")[^>]*>\s*VIEW MOODBOARD ON PINTEREST[^<]*</a>',re.I)
-          h,n=link.subn('',h,count=1)
-          print('Removed moodboard fallback link:',n)
-          assert n==1
-          # 3. Make the requested colour sentence edit.
-          old='The teal colour is central to the group’s branding so was kept'
-          new='The teal colour is central to the group’s branding so was retained.'
-          assert old in h
+          old='Artwork by AC Product &amp; Northern Lights)'
+          new='Artwork by AC Product &amp; Northern Lights'
+          assert old in h, 'Original artwork credit not found'
           h=h.replace(old,new,1)
-          # 4. Update the final edit label exactly.
-          old='The final edit'
-          new='The final edit after multiple rounds of revisions of colours, star density and logo sizing. Final decisions were made in collaboration with AC Product and Northern Lights'
-          assert old in h
-          h=h.replace(old,new,1)
+          assert '<figure class="case__last-right">' in h, 'Final image figure not found'
+          import re
+          pattern=r'(<figure class="case__last-right">\s*<img\b[^>]*>)(\s*</figure>)'
+          replacement=r'\1<figcaption>Artwork by Lucille Richards</figcaption>\2'
+          h,n=re.subn(pattern,replacement,h,count=1)
+          assert n==1, 'Final image markup did not match'
           p.write_text(h,encoding='utf-8')
-          print('Applied copy and spacing edits; retained existing image grid.')
+          print('Updated both artwork credits')
           PY
-      - name: Commit updates
+      - name: Commit edits
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add meet-me-in-the-sky.html
-          git diff --cached --quiet || (git commit -m "Polish case study copy, intro wrapping and Pinterest link" && git push)
+          git diff --cached --quiet || (git commit -m "Correct and add final artwork credits" && git push)
