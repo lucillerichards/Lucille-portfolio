@@ -1,74 +1,47 @@
-name: Rebuild aligned final artwork section
+name: Case study copy and spacing polish
 on:
   push:
     paths: ['.github/workflows/repair-pinterest.yml']
 permissions:
   contents: write
 jobs:
-  fix:
+  edit:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Rebuild final section with explicit image row
+      - name: Apply four scoped case-study edits
         run: |
           python3 - <<'PY'
           from pathlib import Path
           import re
           p=Path('meet-me-in-the-sky.html')
-          html=p.read_text()
-          section=re.search(r'<section class="case__last">.*?</section>',html,re.S)
-          assert section,'Last section missing'
-          old=section.group()
-          imgs=re.findall(r'<img\b[^>]*>',old,re.S)
-          assert len(imgs)==2, 'Expected two images'
-          intro=re.search(r'<div>\s*<p>(.*?)</p>\s*<figure>',old,re.S)
-          assert intro,'Left copy missing'
-          credit=re.search(r'<figcaption>(.*?)</figcaption>',old,re.S)
-          assert credit,'Credit missing'
-          rightlabel=re.search(r'</div>\s*<figure>\s*<p>(.*?)</p>',old,re.S)
-          assert rightlabel,'Right label missing'
-          # Explicit sibling grid cells. Images now have identical row starts.
-          new=('<section class="case__last case__last--aligned">'
-               '<p class="case__last-text">'+intro.group(1)+'</p>'
-               '<p class="case__last-heading">'+rightlabel.group(1)+'</p>'
-               '<figure class="case__last-left">'+imgs[0]+'<figcaption>'+credit.group(1)+'</figcaption></figure>'
-               '<figure class="case__last-right">'+imgs[1]+'</figure>'
-               '</section>')
-          html=html.replace(old,new,1)
-          css="""
-          .case__last.case__last--aligned {
-            display:grid!important;
-            grid-template-columns:repeat(2,minmax(0,1fr))!important;
-            grid-template-areas:"copy label" "left right"!important;
-            grid-template-rows:auto auto!important;
-            column-gap:clamp(30px,5vw,75px)!important;
-            row-gap:24px!important;
-            align-items:start!important;
-          }
-          .case__last--aligned > .case__last-text {grid-area:copy!important;margin:0!important;}
-          .case__last--aligned > .case__last-heading {grid-area:label!important;margin:0!important;}
-          .case__last--aligned > .case__last-left {grid-area:left!important;}
-          .case__last--aligned > .case__last-right {grid-area:right!important;}
-          .case__last--aligned > figure {display:block!important;position:static!important;margin:0!important;align-self:start!important;min-width:0!important;}
-          .case__last--aligned > figure > img {display:block!important;width:100%!important;height:auto!important;aspect-ratio:1 / 1!important;object-fit:cover!important;object-position:center!important;margin:0!important;}
-          .case__last--aligned > figure > figcaption {position:static!important;margin:12px 0 0!important;}
-          @media(max-width:760px) {
-            .case__last.case__last--aligned {
-              grid-template-columns:minmax(0,1fr)!important;
-              grid-template-areas:"copy" "left" "label" "right"!important;
-              grid-template-rows:auto!important;
-              row-gap:20px!important;
-            }
-            .case__last--aligned > .case__last-heading {margin-top:20px!important;}
-          }
-          """
-          html=html.replace('</style>',css+'</style>',1)
-          p.write_text(html)
-          print('Rebuilt final section with 2 sibling images in one grid row')
+          h=p.read_text(encoding='utf-8')
+          # 1. Balance lines of the introductory copy without touching image layout.
+          css='.case__intro .case__copy p { text-wrap: pretty; }\n@supports (text-wrap: balance) { .case__intro .case__copy p:first-child { text-wrap: balance; } }'
+          if css not in h:
+              assert '</style>' in h
+              h=h.replace('</style>',css+'</style>',1)
+          # 2. Remove only the external link beneath the Pinterest embed.
+          link=re.compile(r'<a\b(?=[^>]*href="https://www\.pinterest\.com/lucillejayne02/album-art-inspo/")(?=[^>]*target="_blank")[^>]*>\s*VIEW MOODBOARD ON PINTEREST[^<]*</a>',re.I)
+          h,n=link.subn('',h,count=1)
+          print('Removed moodboard fallback link:',n)
+          assert n==1
+          # 3. Make the requested colour sentence edit.
+          old='The teal colour is central to the group’s branding so was kept'
+          new='The teal colour is central to the group’s branding so was retained.'
+          assert old in h
+          h=h.replace(old,new,1)
+          # 4. Update the final edit label exactly.
+          old='The final edit'
+          new='The final edit after multiple rounds of revisions of colours, star density and logo sizing. Final decisions were made in collaboration with AC Product and Northern Lights'
+          assert old in h
+          h=h.replace(old,new,1)
+          p.write_text(h,encoding='utf-8')
+          print('Applied copy and spacing edits; retained existing image grid.')
           PY
-      - name: Commit change
+      - name: Commit updates
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add meet-me-in-the-sky.html
-          git diff --cached --quiet || (git commit -m "Rebuild final artwork with truly aligned image row" && git push)
+          git diff --cached --quiet || (git commit -m "Polish case study copy, intro wrapping and Pinterest link" && git push)
