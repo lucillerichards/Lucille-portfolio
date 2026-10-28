@@ -1189,3 +1189,27 @@ body.photo-lightbox-open { overflow: hidden; }
   .tee-stack .tee-image { aspect-ratio: 7 / 8; }
   .design-tour { padding-top: 70px; padding-bottom: 80px; }
 }
+
+
+/* Asset-loading polish — allow the real media to appear without a coloured
+   placeholder or an unrelated mockup flashing before it loads. */
+.art-image, .tee-image, .headshot-photo, .wireframe-media-card,
+.wireframe-photo-block, .wireframe-project-image-row > *,
+.creative-video .video-box, .creative-video .video-placeholder {
+  background-color: transparent;
+}
+.art-image:has(img[src]) .mock-art,
+.tee-image:has(img[src]) .mock-tee,
+.logo-frame:has(img[src]) .logo-fallback {
+  display: none;
+}
+img.asset-loading {
+  opacity: 0;
+}
+img.asset-loaded {
+  opacity: 1;
+  transition: opacity 520ms ease-out;
+}
+@media (prefers-reduced-motion: reduce) {
+  img.asset-loading, img.asset-loaded { opacity: 1; transition: none; }
+}
