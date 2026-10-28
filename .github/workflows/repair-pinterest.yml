@@ -1,45 +1,46 @@
-name: Restore broken case-study images
+name: Prepare safe artwork replacement
 on:
   push:
     paths: ['.github/workflows/repair-pinterest.yml']
 permissions:
   contents: write
 jobs:
-  restore:
+  prepare:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-      - name: Restore original embedded images
+      - name: Wire replacements with verified-load fallback
         run: |
           python3 - <<'PY'
           from pathlib import Path
-          import subprocess,re
+          import re
           p=Path('meet-me-in-the-sky.html')
-          current=p.read_text()
-          original=subprocess.check_output(['git','show','1b7a5ac054bc3a336ce71d7ef9b825737ab40702:meet-me-in-the-sky.html'],text=True)
-          pat=r'<img\b[^>]*>'
-          def images(html):
-              return re.findall(pat,html,re.I|re.S)
-          cur=images(current)
-          old=images(original)
-          print('Current image count:',len(cur),'original image count:',len(old))
-          assert len(cur)==len(old), 'Image count changed; refusing ambiguous replacement'
-          replacements=0
-          for index,(a,b) in enumerate(zip(cur,old)):
-              if 'case-replacement.jpg' in a:
-                  assert b.startswith('<img') and 'src="data:' in b, 'Original image not embedded'
-                  current=current.replace(a,b,1)
-                  replacements+=1
-                  print('Restored image index',index)
-          assert replacements==2, f'Expected 2 replacements, found {replacements}'
-          p.write_text(current)
+          text=p.read_text()
+          # Keep the original images as robust fallbacks until replacement assets exist.
+          promo=re.compile(r'<img\b(?=[^>]*alt="Northern Lights promotional image with magenta and cyan treatment")[^>]*>',re.I)
+          text,n=promo.subn(lambda m:m.group(0).replace('<img ','<img data-new-artwork="meet-me-promo.jpg" ',1),text,count=1)
+          assert n==1
+          start=text.find('<div class="case__quad">')
+          assert start>=0
+          match=re.search(r'<img\b[^>]*>',text[start:],re.I)
+          assert match
+          a,b=start+match.start(),start+match.end()
+          if 'data-new-artwork=' not in match.group():
+              text=text[:a]+match.group().replace('<img ','<img data-new-artwork="meet-me-collage.jpg" ',1)+text[b:]
+          js="""<script>
+          document.querySelectorAll('img[data-new-artwork]').forEach(img=>{
+            const test=new Image();
+            test.onload=()=>{ if(test.naturalWidth>0) img.src=test.src; };
+            test.src=img.dataset.newArtwork;
+          });
+          </script>"""
+          if 'const test=new Image();' not in text:
+              text=text.replace('</body>',js+'</body>',1)
+          p.write_text(text)
           PY
-      - name: Commit fix
+      - name: Commit
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add meet-me-in-the-sky.html
-          git commit -m "Restore original embedded images to fix broken assets"
-          git push
+          git diff --cached --quiet || (git commit -m "Prepare image swaps with fallback until assets load" && git push)
