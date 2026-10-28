@@ -1,4 +1,4 @@
-name: Align final images in case study
+name: Fix bottom image grid alignment
 on:
   push:
     paths: ['.github/workflows/repair-pinterest.yml']
@@ -9,41 +9,45 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Align paired images at the same baseline
+      - name: Place two images on the same grid row
         run: |
           python3 - <<'PY'
           from pathlib import Path
           p=Path('meet-me-in-the-sky.html')
-          html=p.read_text()
+          h=p.read_text()
           css="""
-          /* Final paired artwork: line up image top edges below each text block. */
-          .case__last { align-items:stretch; }
-          .case__last > div, .case__last > figure {
-            display:flex; flex-direction:column; min-width:0;
+          /* Put both headings/copy in row one; both artwork images in row two. */
+          .case__last {
+            display:grid!important;
+            grid-template-columns:repeat(2,minmax(0,1fr))!important;
+            grid-template-rows:auto auto!important;
+            column-gap:clamp(28px,5vw,75px)!important;
+            row-gap:20px!important;
+            align-items:start!important;
           }
-          .case__last > div > figure, .case__last > figure > img {
-            margin-top:auto;
-          }
-          .case__last > div > figure { position:relative; margin-bottom:42px; }
-          .case__last > div > figure figcaption {
-            position:absolute; top:100%; left:0; right:0; margin-top:12px;
-          }
-          .case__last > div > figure img, .case__last > figure > img {
-            display:block; width:100%; height:auto; aspect-ratio:1 / 1;
-            object-fit:contain; object-position:center;
-          }
-          @media(max-width:760px) {
-            .case__last > div > figure {margin-bottom:38px;}
+          .case__last > div, .case__last > figure {display:contents!important;}
+          .case__last > div > p {grid-column:1!important;grid-row:1!important;margin:0!important;align-self:start!important;}
+          .case__last > figure > p {grid-column:2!important;grid-row:1!important;margin:0!important;align-self:start!important;}
+          .case__last > div > figure {grid-column:1!important;grid-row:2!important;margin:0!important;align-self:start!important;position:static!important;}
+          .case__last > figure > img {grid-column:2!important;grid-row:2!important;align-self:start!important;margin:0!important;}
+          .case__last > div > figure img, .case__last > figure > img {width:100%!important;height:auto!important;aspect-ratio:auto!important;display:block!important;object-fit:contain!important;object-position:top center!important;}
+          .case__last > div > figure figcaption {position:static!important;margin:12px 0 0!important;}
+          @media(max-width:760px){
+            .case__last {grid-template-columns:minmax(0,1fr)!important;grid-template-rows:auto!important;row-gap:18px!important;}
+            .case__last > div > p {grid-column:1!important;grid-row:1!important;}
+            .case__last > div > figure {grid-column:1!important;grid-row:2!important;}
+            .case__last > figure > p {grid-column:1!important;grid-row:3!important;margin-top:24px!important;}
+            .case__last > figure > img {grid-column:1!important;grid-row:4!important;}
           }
           """
-          if 'Final paired artwork: line up image top edges' not in html:
-              html=html.replace('</style>',css+'</style>',1)
-          assert 'Final paired artwork: line up image top edges' in html
-          p.write_text(html)
+          assert 'class="case__last"' in h
+          if 'Put both headings/copy in row one' not in h:
+              h=h.replace('</style>',css+'</style>',1)
+          p.write_text(h)
           PY
-      - name: Commit
+      - name: Commit layout repair
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add meet-me-in-the-sky.html
-          git diff --cached --quiet || (git commit -m "Align bottom case study images" && git push)
+          git diff --cached --quiet || (git commit -m "Align case-study images using shared grid row" && git push)
