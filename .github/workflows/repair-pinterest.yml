@@ -1,42 +1,45 @@
-name: Replace case-study artwork images
+name: Restore broken case-study images
 on:
   push:
     paths: ['.github/workflows/repair-pinterest.yml']
 permissions:
   contents: write
 jobs:
-  replace:
+  restore:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Replace targeted artwork assets
+        with:
+          fetch-depth: 0
+      - name: Restore original embedded images
         run: |
           python3 - <<'PY'
           from pathlib import Path
-          import re
+          import subprocess,re
           p=Path('meet-me-in-the-sky.html')
-          h=p.read_text()
-          image='case-replacement.jpg'
-          # Only change the promo image identified by its existing alt and credit.
-          promo=r'<img\s+src="[^"]+"\s+alt="Northern Lights promotional image with magenta and cyan treatment"[^>]*>'
-          h,n=re.subn(promo,'<img src="'+image+'" alt="Northern Lights promotional image with magenta and cyan treatment" loading="lazy">',h,count=1)
-          assert n==1,'Promo image not found'
-          # Only replace the first image within the four-image design collage.
-          start=h.find('<div class="case__quad">')
-          assert start>=0,'Four-image collage not found'
-          hit=re.search(r'<img\b[^>]*>',h[start:],flags=re.I)
-          assert hit,'First collage image not found'
-          a,b=start+hit.start(),start+hit.end()
-          h=h[:a]+'<img src="'+image+'" alt="Northern Lights magenta and blue composite artwork" loading="lazy">'+h[b:]
-          # Reduce opening logo-to-copy gap without shifting other sections.
-          if 'case__intro .case__logo{margin-bottom:18px' not in h:
-              h=h.replace('</style>','<style>.case__intro .case__logo{margin-bottom:18px!important}@media(max-width:760px){.case__intro .case__logo{margin-bottom:12px!important}}</style></style>',1) if False else h.replace('</style>','.case__intro .case__logo{margin-bottom:18px!important}@media(max-width:760px){.case__intro .case__logo{margin-bottom:12px!important}}</style>',1)
-          p.write_text(h)
-          print('Updated both specified images; text and other images retained')
+          current=p.read_text()
+          original=subprocess.check_output(['git','show','1b7a5ac054bc3a336ce71d7ef9b825737ab40702:meet-me-in-the-sky.html'],text=True)
+          pat=r'<img\b[^>]*>'
+          def images(html):
+              return re.findall(pat,html,re.I|re.S)
+          cur=images(current)
+          old=images(original)
+          print('Current image count:',len(cur),'original image count:',len(old))
+          assert len(cur)==len(old), 'Image count changed; refusing ambiguous replacement'
+          replacements=0
+          for index,(a,b) in enumerate(zip(cur,old)):
+              if 'case-replacement.jpg' in a:
+                  assert b.startswith('<img') and 'src="data:' in b, 'Original image not embedded'
+                  current=current.replace(a,b,1)
+                  replacements+=1
+                  print('Restored image index',index)
+          assert replacements==2, f'Expected 2 replacements, found {replacements}'
+          p.write_text(current)
           PY
-      - name: Commit
+      - name: Commit fix
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add meet-me-in-the-sky.html
-          git diff --cached --quiet || (git commit -m "Replace promo and collage artwork and tighten logo spacing" && git push)
+          git commit -m "Restore original embedded images to fix broken assets"
+          git push
