@@ -1,4 +1,4 @@
-name: Repair Pinterest embed in case study
+name: Update Pinterest board height and page typo
 on:
   push:
     paths:
@@ -7,76 +7,39 @@ on:
 permissions:
   contents: write
 jobs:
-  fix-embed:
+  update-case-study:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-        with:
-          persist-credentials: true
-      - name: Replace Pinterest embed in the case study
+      - name: Make minimal case study edits
         run: |
           python3 - <<'PY'
           from pathlib import Path
           import re
-          path=Path('meet-me-in-the-sky.html')
-          html=path.read_text(encoding='utf-8')
-          print('HTML length:',len(html))
-          for m in list(re.finditer(r'pinterest|inspiration|moodboard',html,re.I))[:25]:
-              print('MATCH:',repr(html[max(0,m.start()-130):m.end()+170])[:400])
-          url='https://www.pinterest.com/lucillejayne02/album-art-inspo/'
-          widget=('<div class="pinterest-live-board" style="width:100%;max-width:860px;margin:18px auto 0;min-height:460px;">'
-                  '<a data-pin-do="embedBoard" data-pin-board-width="800" data-pin-scale-width="110" data-pin-scale-height="440" href="'+url+'"></a>'
-                  '</div><p class="pinterest-fallback" style="margin:14px 0 24px;"><a href="'+url+'" target="_blank" rel="noopener noreferrer" style="text-decoration:underline;text-underline-offset:4px;">View the inspiration board on Pinterest ↗</a></p>')
-          if 'pinterest-live-board' in html:
-              print('Already installed')
-          else:
-              patterns=[
-                r'<iframe\b[^>]*(?:pinterest\.com|pinterest\.co\.uk)[^>]*>\s*</iframe>',
-                r'<iframe\b(?=[^>]*pinterest)[^>]*>\s*</iframe>',
-                r'<a\b[^>]*data-pin-do=["\']embedBoard["\'][^>]*>\s*</a>'
-              ]
-              found=False
-              for pattern in patterns:
-                  html,n=re.subn(pattern,lambda m:widget,html,count=1,flags=re.I|re.S)
-                  if n: found=True;print('Replaced old widget using',pattern);break
-              if not found:
-                  # The inspiration section has no existing iframe. Insert after
-                  # the relevant heading, without altering artwork or other media.
-                  heading=re.search(r'<h[1-6]\b[^>]*>[^<]*(?:INSPIRATION|MOODBOARD|PINTEREST)[^<]*</h[1-6]>',html,re.I)
-                  if heading:
-                      html=html[:heading.end()]+widget+html[heading.end():]
-                      found=True
-                      print('Inserted directly below inspiration heading')
-              if not found:
-                  # Make the Pinterest widget available directly on the page,
-                  # before the end of the main content.
-                  location=html.lower().rfind('</main>')
-                  if location<0: location=html.lower().rfind('</body>')
-                  if location<0: raise RuntimeError('Could not locate insertion point')
-                  html=html[:location]+'<section aria-label="Album artwork inspiration" style="padding:24px;max-width:1140px;margin:0 auto"><h2>ALBUM ART INSPIRATION</h2>'+widget+'</section>'+html[location:]
-                  print('Created a board section before the end of the page')
-              html=html.replace('</body>','<script async defer src="https://assets.pinterest.com/js/pinit.js"></script>\n</body>',1)
-          # Fix the actual original moodboard, which used a pin.it short URL.
-          # Remove the extra section added by the first repair.
-          html=re.sub(r'<section aria-label="Album artwork inspiration"[^>]*>.*?<div class="pinterest-live-board".*?</section>', '', html, count=1, flags=re.I|re.S)
-          original=re.compile(r'<div class="case__pin">.*?</div>',re.I|re.S)
-          replacement=('<div class="case__pin"><div class="pinterest-live-board" style="width:100%;max-width:860px;margin:0 auto;min-height:460px;">'
-                       '<a data-pin-do="embedBoard" data-pin-board-width="800" data-pin-scale-width="110" data-pin-scale-height="440" href="'+url+'"></a>'
-                       '</div><a href="'+url+'" target="_blank" rel="noopener noreferrer">VIEW MOODBOARD ON PINTEREST ↗</a></div>')
-          html,n=original.subn(lambda m:replacement,html,count=1)
-          if n!=1: raise RuntimeError('Original case__pin moodboard not found; refusing to alter the wrong section')
-          print('Replaced original case__pin block in the right position')
-          # Deduplicate the official loader.
-          loader='<script async defer src="https://assets.pinterest.com/js/pinit.js"></script>'
-          if html.count(loader)>1: html=html.replace(loader,'') .replace('</body>',loader+'</body>',1)
-          path.write_text(html,encoding='utf-8')
+          p=Path('meet-me-in-the-sky.html')
+          html=p.read_text(encoding='utf-8')
+          # Make the working Pinterest board about 140px shorter.
+          anchor=re.search(r'<a\b[^>]*data-pin-do="embedBoard"[^>]*>',html,re.I)
+          if not anchor:
+              raise RuntimeError('Pinterest board widget not found')
+          new=anchor.group().replace('data-pin-scale-height="440"','data-pin-scale-height="300"')
+          if new==anchor.group() and 'data-pin-scale-height="300"' not in new:
+              raise RuntimeError('Unexpected Pinterest embed height: '+anchor.group())
+          html=html[:anchor.start()]+new+html[anchor.end():]
+          html=html.replace('min-height:460px','min-height:320px')
+          # Fix copy without changing any other content.
+          html,count=re.subn(r'\bpersonnel\b','personal',html,flags=re.I)
+          print('Personnel typo occurrences corrected:',count)
+          if not count:
+              raise RuntimeError('Expected typo not found; do not commit unverified edit')
+          p.write_text(html,encoding='utf-8')
           PY
-      - name: Commit case study
+      - name: Commit and deploy
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add meet-me-in-the-sky.html
           if ! git diff --cached --quiet; then
-            git commit -m "Repair embedded Pinterest moodboard on case study"
+            git commit -m "Shorten Pinterest moodboard and fix personal typo"
             git push
           fi
