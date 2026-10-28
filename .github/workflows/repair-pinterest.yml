@@ -1,45 +1,29 @@
-name: Update Pinterest board height and page typo
+name: Enlarge Pinterest pins
 on:
   push:
     paths:
       - '.github/workflows/repair-pinterest.yml'
-  workflow_dispatch:
 permissions:
   contents: write
 jobs:
-  update-case-study:
+  change:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Make minimal case study edits
+      - name: Change Pinterest pin dimensions
         run: |
           python3 - <<'PY'
           from pathlib import Path
-          import re
           p=Path('meet-me-in-the-sky.html')
-          html=p.read_text(encoding='utf-8')
-          # Make the working Pinterest board about 140px shorter.
-          anchor=re.search(r'<a\b[^>]*data-pin-do="embedBoard"[^>]*>',html,re.I)
-          if not anchor:
-              raise RuntimeError('Pinterest board widget not found')
-          new=anchor.group().replace('data-pin-scale-height="440"','data-pin-scale-height="300"')
-          if new==anchor.group() and 'data-pin-scale-height="300"' not in new:
-              raise RuntimeError('Unexpected Pinterest embed height: '+anchor.group())
-          html=html[:anchor.start()]+new+html[anchor.end():]
-          html=html.replace('min-height:460px','min-height:320px')
-          # Fix copy without changing any other content.
-          html,count=re.subn('personnel','personal',html,flags=re.I)
-          print('Personnel typo occurrences corrected:',count)
-          if not count:
-              print('Person-related text:',[html[max(0,m.start()-65):m.end()+65] for m in list(re.finditer('person',html,re.I))[:12]])
-          p.write_text(html,encoding='utf-8')
+          text=p.read_text()
+          old='data-pin-scale-width="110"'
+          new='data-pin-scale-width="170"'
+          assert old in text or new in text
+          p.write_text(text.replace(old,new))
           PY
-      - name: Commit and deploy
+      - name: Save change
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add meet-me-in-the-sky.html
-          if ! git diff --cached --quiet; then
-            git commit -m "Shorten Pinterest moodboard and fix personal typo"
-            git push
-          fi
+          git diff --cached --quiet || (git commit -m "Increase Pinterest pin size" && git push)
