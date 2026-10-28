@@ -1,53 +1,74 @@
-name: Fix bottom image grid alignment
+name: Rebuild aligned final artwork section
 on:
   push:
     paths: ['.github/workflows/repair-pinterest.yml']
 permissions:
   contents: write
 jobs:
-  align:
+  fix:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Place two images on the same grid row
+      - name: Rebuild final section with explicit image row
         run: |
           python3 - <<'PY'
           from pathlib import Path
+          import re
           p=Path('meet-me-in-the-sky.html')
-          h=p.read_text()
+          html=p.read_text()
+          section=re.search(r'<section class="case__last">.*?</section>',html,re.S)
+          assert section,'Last section missing'
+          old=section.group()
+          imgs=re.findall(r'<img\b[^>]*>',old,re.S)
+          assert len(imgs)==2, 'Expected two images'
+          intro=re.search(r'<div>\s*<p>(.*?)</p>\s*<figure>',old,re.S)
+          assert intro,'Left copy missing'
+          credit=re.search(r'<figcaption>(.*?)</figcaption>',old,re.S)
+          assert credit,'Credit missing'
+          rightlabel=re.search(r'</div>\s*<figure>\s*<p>(.*?)</p>',old,re.S)
+          assert rightlabel,'Right label missing'
+          # Explicit sibling grid cells. Images now have identical row starts.
+          new=('<section class="case__last case__last--aligned">'
+               '<p class="case__last-text">'+intro.group(1)+'</p>'
+               '<p class="case__last-heading">'+rightlabel.group(1)+'</p>'
+               '<figure class="case__last-left">'+imgs[0]+'<figcaption>'+credit.group(1)+'</figcaption></figure>'
+               '<figure class="case__last-right">'+imgs[1]+'</figure>'
+               '</section>')
+          html=html.replace(old,new,1)
           css="""
-          /* Put both headings/copy in row one; both artwork images in row two. */
-          .case__last {
+          .case__last.case__last--aligned {
             display:grid!important;
             grid-template-columns:repeat(2,minmax(0,1fr))!important;
+            grid-template-areas:"copy label" "left right"!important;
             grid-template-rows:auto auto!important;
-            column-gap:clamp(28px,5vw,75px)!important;
-            row-gap:20px!important;
+            column-gap:clamp(30px,5vw,75px)!important;
+            row-gap:24px!important;
             align-items:start!important;
           }
-          .case__last > div, .case__last > figure {display:contents!important;}
-          .case__last > div > p {grid-column:1!important;grid-row:1!important;margin:0!important;align-self:start!important;}
-          .case__last > figure > p {grid-column:2!important;grid-row:1!important;margin:0!important;align-self:start!important;}
-          .case__last > div > figure {grid-column:1!important;grid-row:2!important;margin:0!important;align-self:start!important;position:static!important;}
-          .case__last > figure > img {grid-column:2!important;grid-row:2!important;align-self:start!important;margin:0!important;}
-          .case__last > div > figure img, .case__last > figure > img {width:100%!important;height:auto!important;aspect-ratio:auto!important;display:block!important;object-fit:contain!important;object-position:top center!important;}
-          .case__last > div > figure figcaption {position:static!important;margin:12px 0 0!important;}
-          @media(max-width:760px){
-            .case__last {grid-template-columns:minmax(0,1fr)!important;grid-template-rows:auto!important;row-gap:18px!important;}
-            .case__last > div > p {grid-column:1!important;grid-row:1!important;}
-            .case__last > div > figure {grid-column:1!important;grid-row:2!important;}
-            .case__last > figure > p {grid-column:1!important;grid-row:3!important;margin-top:24px!important;}
-            .case__last > figure > img {grid-column:1!important;grid-row:4!important;}
+          .case__last--aligned > .case__last-text {grid-area:copy!important;margin:0!important;}
+          .case__last--aligned > .case__last-heading {grid-area:label!important;margin:0!important;}
+          .case__last--aligned > .case__last-left {grid-area:left!important;}
+          .case__last--aligned > .case__last-right {grid-area:right!important;}
+          .case__last--aligned > figure {display:block!important;position:static!important;margin:0!important;align-self:start!important;min-width:0!important;}
+          .case__last--aligned > figure > img {display:block!important;width:100%!important;height:auto!important;aspect-ratio:1 / 1!important;object-fit:cover!important;object-position:center!important;margin:0!important;}
+          .case__last--aligned > figure > figcaption {position:static!important;margin:12px 0 0!important;}
+          @media(max-width:760px) {
+            .case__last.case__last--aligned {
+              grid-template-columns:minmax(0,1fr)!important;
+              grid-template-areas:"copy" "left" "label" "right"!important;
+              grid-template-rows:auto!important;
+              row-gap:20px!important;
+            }
+            .case__last--aligned > .case__last-heading {margin-top:20px!important;}
           }
           """
-          assert 'class="case__last"' in h
-          if 'Put both headings/copy in row one' not in h:
-              h=h.replace('</style>',css+'</style>',1)
-          p.write_text(h)
+          html=html.replace('</style>',css+'</style>',1)
+          p.write_text(html)
+          print('Rebuilt final section with 2 sibling images in one grid row')
           PY
-      - name: Commit layout repair
+      - name: Commit change
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add meet-me-in-the-sky.html
-          git diff --cached --quiet || (git commit -m "Align case-study images using shared grid row" && git push)
+          git diff --cached --quiet || (git commit -m "Rebuild final artwork with truly aligned image row" && git push)
