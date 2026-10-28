@@ -1,28 +1,42 @@
-name: Inspect case study image layout
+name: Polish Meet Me in the Sky image layout
 on:
   push:
     paths: ['.github/workflows/repair-pinterest.yml']
+permissions:
+  contents: write
 jobs:
-  inspect:
+  polish:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Inspect image structure
+      - name: Adjust image sizing and alignment
         run: |
           python3 - <<'PY'
           from pathlib import Path
-          import re
-          h=Path('meet-me-in-the-sky.html').read_text()
-          for i,m in enumerate(re.finditer(r'<img\\b[^>]*>',h,re.I)):
-              tag=m.group()
-              print('IMAGE',i,'TAG',re.sub(r'(?i)src="data:[^"]+"','src="(embedded)"',tag)[:320])
-              print('CONTEXT',re.sub(r'(?i)data:image/[^"\\s]+','(embedded)',h[max(0,m.start()-210):m.start()])[-210:])
-          for m in re.finditer(r'<style[^>]*>(.*?)</style>',h,re.I|re.S):
-              txt=m.group(1)
-              print('STYLE TAIL',txt[-11000:])
-          clean=re.sub(r'data:image/[^"\\s]+','(embedded image)',h)
-          for name in ['case__intro','case__process','case__last']:
-              pos=clean.find('<section class="'+name+'">')
-              print('SECTION',name,clean[pos:pos+2700])
-          print('case sections',re.findall(r'<section[^>]*class="[^"]*case[^"]*"[^>]*>',h)[:40])
+          p=Path('meet-me-in-the-sky.html')
+          html=p.read_text(encoding='utf-8')
+          css="""
+          /* Image sizing and alignment adjustments */
+          .case__logo { width:min(370px,72vw);height:auto;margin-left:auto;margin-right:auto; }
+          .case__last { align-items:start; }
+          .case__last > * { min-width:0; }
+          .case__last figure { margin:0;align-self:start; }
+          .case__last figure img { display:block;width:100%;height:auto;aspect-ratio:1;object-fit:contain;object-position:center top; }
+          .case__studies > img,.case__quad img { display:block; }
+          .case__intro img,.case__process img,.case__last img { background:transparent; }
+          @media(max-width:760px) {
+            .case__logo { width:min(320px,78vw); }
+            .case__last { align-items:start; }
+          }
+          """
+          assert '<style' in html and '</style>' in html
+          if 'Image sizing and alignment adjustments' not in html:
+              html=html.replace('</style>',css+'</style>',1)
+          p.write_text(html,encoding='utf-8')
           PY
+      - name: Commit layout adjustments
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add meet-me-in-the-sky.html
+          git diff --cached --quiet || (git commit -m "Enlarge case study opening image and align final images" && git push)
