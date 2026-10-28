@@ -1,21 +1,41 @@
-name: Inspect official Northern Lights Spotify embeds
+name: Set case-study social share artwork
 on:
   push:
     paths: ['.github/workflows/repair-pinterest.yml']
+permissions:
+  contents: write
 jobs:
-  inspect:
+  meta:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - run: |
+      - name: Add link preview metadata
+        run: |
           python3 - <<'PY'
-          import requests,re,html
-          for url in ['https://www.dunorthernlights.co.uk/music','https://dur.ac.uk/news-events/latest-news/2026/03/durhams-got-talent-/']:
-              try:
-                  r=requests.get(url,timeout=20)
-                  print('SOURCE',url,'STATUS',r.status_code,'LENGTH',len(r.content))
-                  links=set(re.findall(r'https?[^"\s<>]{0,200}spotify[^"\s<>]{0,180}',html.unescape(r.text),re.I))
-                  links|=set(re.findall(r'https?[^"\s<>]{0,200}open\.spotify\.com/[^"\s<>]{0,180}',html.unescape(r.text),re.I))
-                  for link in list(links)[:30]: print('SPOTIFY',link[:260])
-              except Exception as e: print(type(e).__name__,str(e)[:150])
+          from pathlib import Path
+          p=Path('meet-me-in-the-sky.html')
+          s=p.read_text()
+          meta='''<meta property="og:type" content="article">
+          <meta property="og:title" content="Meet Me in the Sky — Lucille Richards">
+          <meta property="og:description" content="Album artwork and creative process for Northern Lights A Cappella.">
+          <meta property="og:url" content="https://lucillerichards.com/meet-me-in-the-sky.html">
+          <meta property="og:image" content="https://lucillerichards.com/portfolio-share-image.jpg">
+          <meta property="og:image:width" content="2048">
+          <meta property="og:image:height" content="2048">
+          <meta property="og:image:alt" content="Purple and teal Northern Lights album artwork">
+          <meta name="twitter:card" content="summary_large_image">
+          <meta name="twitter:image" content="https://lucillerichards.com/portfolio-share-image.jpg">
+          '''
+          if '<meta property="og:image"' not in s:
+              s=s.replace('</head>',meta+'</head>',1)
+          else:
+              import re
+              s=re.sub(r'(<meta\s+property="og:image"\s+content=")[^"]+',r'\g<1>https://lucillerichards.com/portfolio-share-image.jpg',s,count=1)
+          p.write_text(s)
           PY
+      - name: Commit
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add meet-me-in-the-sky.html
+          git diff --cached --quiet || (git commit -m "Use album artwork for case study link previews" && git push)
