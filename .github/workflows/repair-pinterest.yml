@@ -1,0 +1,69 @@
+name: Repair Pinterest embed in case study
+on:
+  push:
+    paths:
+      - '.github/workflows/repair-pinterest.yml'
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  fix-embed:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: true
+      - name: Replace Pinterest embed in the case study
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          import re
+          path=Path('meet-me-in-the-sky.html')
+          html=path.read_text(encoding='utf-8')
+          print('HTML length:',len(html))
+          for m in list(re.finditer(r'pinterest|inspiration|moodboard',html,re.I))[:25]:
+              print('MATCH:',repr(html[max(0,m.start()-130):m.end()+170])[:400])
+          url='https://www.pinterest.com/lucillejayne02/album-art-inspo/'
+          widget=('<div class="pinterest-live-board" style="width:100%;max-width:860px;margin:18px auto 0;min-height:460px;">'
+                  '<a data-pin-do="embedBoard" data-pin-board-width="800" data-pin-scale-width="110" data-pin-scale-height="440" href="'+url+'"></a>'
+                  '</div><p class="pinterest-fallback" style="margin:14px 0 24px;"><a href="'+url+'" target="_blank" rel="noopener noreferrer" style="text-decoration:underline;text-underline-offset:4px;">View the inspiration board on Pinterest ↗</a></p>')
+          if 'pinterest-live-board' in html:
+              print('Already installed')
+          else:
+              patterns=[
+                r'<iframe\b[^>]*(?:pinterest\.com|pinterest\.co\.uk)[^>]*>\s*</iframe>',
+                r'<iframe\b(?=[^>]*pinterest)[^>]*>\s*</iframe>',
+                r'<a\b[^>]*data-pin-do=["\']embedBoard["\'][^>]*>\s*</a>'
+              ]
+              found=False
+              for pattern in patterns:
+                  html,n=re.subn(pattern,lambda m:widget,html,count=1,flags=re.I|re.S)
+                  if n: found=True;print('Replaced old widget using',pattern);break
+              if not found:
+                  # The inspiration section has no existing iframe. Insert after
+                  # the relevant heading, without altering artwork or other media.
+                  heading=re.search(r'<h[1-6]\b[^>]*>[^<]*(?:INSPIRATION|MOODBOARD|PINTEREST)[^<]*</h[1-6]>',html,re.I)
+                  if heading:
+                      html=html[:heading.end()]+widget+html[heading.end():]
+                      found=True
+                      print('Inserted directly below inspiration heading')
+              if not found:
+                  # Make the Pinterest widget available directly on the page,
+                  # before the end of the main content.
+                  location=html.lower().rfind('</main>')
+                  if location<0: location=html.lower().rfind('</body>')
+                  if location<0: raise RuntimeError('Could not locate insertion point')
+                  html=html[:location]+'<section aria-label="Album artwork inspiration" style="padding:24px;max-width:1140px;margin:0 auto"><h2>ALBUM ART INSPIRATION</h2>'+widget+'</section>'+html[location:]
+                  print('Created a board section before the end of the page')
+              html=html.replace('</body>','<script async defer src="https://assets.pinterest.com/js/pinit.js"></script>\n</body>',1)
+          path.write_text(html,encoding='utf-8')
+          PY
+      - name: Commit case study
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add meet-me-in-the-sky.html
+          if ! git diff --cached --quiet; then
+            git commit -m "Repair embedded Pinterest moodboard on case study"
+            git push
+          fi
