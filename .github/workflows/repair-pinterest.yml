@@ -1,42 +1,36 @@
-name: Polish Meet Me in the Sky image layout
+name: Align final case-study artworks
 on:
   push:
     paths: ['.github/workflows/repair-pinterest.yml']
 permissions:
   contents: write
 jobs:
-  polish:
+  fix:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Adjust image sizing and alignment
+      - name: Fix final artwork pair
         run: |
           python3 - <<'PY'
           from pathlib import Path
           p=Path('meet-me-in-the-sky.html')
-          html=p.read_text(encoding='utf-8')
+          text=p.read_text()
           css="""
-          /* Image sizing and alignment adjustments */
-          .case__logo { width:min(370px,72vw);height:auto;margin-left:auto;margin-right:auto; }
-          .case__last { align-items:start; }
-          .case__last > * { min-width:0; }
-          .case__last figure { margin:0;align-self:start; }
-          .case__last figure img { display:block;width:100%;height:auto;aspect-ratio:1;object-fit:contain;object-position:center top; }
-          .case__studies > img,.case__quad img { display:block; }
-          .case__intro img,.case__process img,.case__last img { background:transparent; }
-          @media(max-width:760px) {
-            .case__logo { width:min(320px,78vw); }
-            .case__last { align-items:start; }
-          }
+          /* Final artwork pair — consistent top edge, natural image proportions */
+          .case__last {display:grid;grid-template-columns:repeat(2,minmax(0,1fr));align-items:start;gap:clamp(28px,5vw,75px);}
+          .case__last > div,.case__last > figure {min-width:0;align-self:start;}
+          .case__last figure {margin:0;}
+          .case__last figure img {display:block;width:100%;height:auto;aspect-ratio:auto;object-fit:contain;object-position:top center;}
+          .case__last figcaption {margin-top:14px;}
+          @media(max-width:760px){.case__last{grid-template-columns:1fr;gap:32px;}}
           """
-          assert '<style' in html and '</style>' in html
-          if 'Image sizing and alignment adjustments' not in html:
-              html=html.replace('</style>',css+'</style>',1)
-          p.write_text(html,encoding='utf-8')
+          if 'Final artwork pair — consistent top edge' not in text:
+              text=text.replace('</style>',css+'</style>',1)
+          p.write_text(text)
           PY
-      - name: Commit layout adjustments
+      - name: Commit
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add meet-me-in-the-sky.html
-          git diff --cached --quiet || (git commit -m "Enlarge case study opening image and align final images" && git push)
+          git diff --cached --quiet || (git commit -m "Align final case-study artwork images" && git push)
