@@ -1,37 +1,19 @@
-name: Align final case-study artworks
+name: Locate case-study artwork assets
 on:
   push:
     paths: ['.github/workflows/repair-pinterest.yml']
-permissions:
-  contents: write
 jobs:
-  fix:
+  inspect:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Fix final artwork pair
-        run: |
+      - run: |
           python3 - <<'PY'
           from pathlib import Path
-          p=Path('meet-me-in-the-sky.html')
-          text=p.read_text()
-          css="""
-          /* Final artwork pair — consistent top edge, natural image proportions */
-          .case__intro .case__logo {margin-bottom:24px;}
-          .case__last {display:grid;grid-template-columns:repeat(2,minmax(0,1fr));align-items:start;gap:clamp(28px,5vw,75px);}
-          .case__last > div,.case__last > figure {min-width:0;align-self:start;}
-          .case__last figure {margin:0;}
-          .case__last figure img {display:block;width:100%;height:auto;aspect-ratio:auto;object-fit:contain;object-position:top center;}
-          .case__last figcaption {margin-top:14px;}
-          @media(max-width:760px){.case__last{grid-template-columns:1fr;gap:32px;}}
-          """
-          if 'Final artwork pair — consistent top edge' not in text:
-              text=text.replace('</style>',css+'</style>',1)
-          p.write_text(text)
+          import re
+          h=Path('meet-me-in-the-sky.html').read_text()
+          h=re.sub(r'src="data:[^"]+"','src="EMBEDDED"',h)
+          for word in ['case__quad','Artwork by','AC Product','case__last']:
+              p=h.lower().find(word.lower())
+              print(word,'at',p,'CONTEXT',h[max(0,p-280):p+950] if p>=0 else '')
           PY
-      - name: Commit
-        run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add meet-me-in-the-sky.html
-          git diff --cached --quiet || (git commit -m "Align final case-study artwork images" && git push)
