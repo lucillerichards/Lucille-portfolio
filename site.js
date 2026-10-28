@@ -169,3 +169,20 @@ function setupAlbumArtPinterest() {
   }
 }
 setupAlbumArtPinterest();
+
+/* Gently reveal actual media rather than flashing coloured placeholder blocks. */
+function setupNaturalMediaLoading() {
+  document.querySelectorAll('img:not(.photo-lightbox-image)').forEach(img => {
+    if (img.complete && img.naturalWidth > 0) return;
+    if (img.complete && img.naturalWidth === 0) return;
+    img.classList.add('asset-loading');
+    const reveal = () => {
+      img.classList.remove('asset-loading');
+      img.classList.add('asset-loaded');
+    };
+    img.addEventListener('load', reveal, { once: true });
+    img.addEventListener('error', () => img.classList.remove('asset-loading'), { once: true });
+    if (img.complete) reveal();
+  });
+}
+setupNaturalMediaLoading();
